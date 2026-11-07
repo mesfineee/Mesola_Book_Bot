@@ -1,1 +1,37 @@
-python-telegram-bot==22.8
+import os
+import logging
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
+from telegram import Update
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
+
+# 1. Render ፖርት እንዲያገኝ የሚያስችል ትንሽ ዌብ ሰርቨር
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running!")
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), SimpleHandler)
+    server.serve_forever()
+
+# ሰርቨሩ ከጀርባ እንዲሰራ ማድረግ
+threading.Thread(target=run_web_server, daemon=True).start()
+
+# 2. የቴሌግራም ቦት ዋና ኮድ
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("ሰላም! Mesola Technology ቦት በሰርቨር ላይ በትክክል እየሰራ ነው!")
+
+if __name__ == '__main__':
+    # የቦትዎን ቶከን (Token) ከታች ባለው ቦታ ያስገቡ
+    TOKEN = "9216931047:AAGYhm4ycsktMXmh6JEODB-A9_LSQmIHBdg"
+    
+    application = ApplicationBuilder().token(TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    
+    # ቦቱን ማስጀመር
+    application.run_polling()
