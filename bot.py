@@ -1,7 +1,5 @@
 import os
 import logging
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import threading
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -22,6 +20,9 @@ CBE_NAME = "Mesfin"
 TELEBIRR_NUMBER = "0931335199"
 TELEBIRR_NAME = "Mesfin"
 
+# Render Web Service URL
+RENDER_URL = "https://mesola-book-bot.onrender.com"
+
 # Courses and their corresponding GitHub PDF filenames
 COURSES = {
     "basic": ("Basic Computer Skills Full Course", 350, "BASIC COMPUTER SKIILLS FULL COURSE.pdf"),
@@ -31,19 +32,6 @@ COURSES = {
 }
 
 logging.basicConfig(level=logging.INFO)
-
-
-# ==================== DUMMY HTTP SERVER FOR RENDER ====================
-class SimpleHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Mesola Technology Bot is alive and running!")
-
-def run_dummy_server():
-    port = int(os.environ.get("PORT", 10000))
-    server = HTTPServer(("0.0.0.0", port), SimpleHandler)
-    server.serve_forever()
 
 
 # ==================== 1. START COMMAND ====================
@@ -171,13 +159,11 @@ async def admin_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name, _, book_filename = COURSES[course_key]
 
     try:
-        # Send confirmation message
         await context.bot.send_message(
             chat_id=customer_id,
             text=f"🎉 Your payment has been verified by Admin!\n\nHere is your book: {name}"
         )
 
-        # Send the actual PDF document from the server files
         with open(book_filename, 'rb') as book_file:
             await context.bot.send_document(
                 chat_id=customer_id,
@@ -185,7 +171,6 @@ async def admin_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 caption=f"📖 {name} - Enjoy reading!"
             )
         
-        # Safely update admin message to prevent NoneType errors
         old_caption = query.message.caption or ""
         old_text = query.message.text or ""
         
@@ -204,12 +189,7 @@ async def admin_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ==================== MAIN FUNCTION ====================
 def main():
-    if BOT_TOKEN == "PASTE_YOUR_NEW_TOKEN_HERE":
-        raise ValueError("Please add your new BotFather token first.")
-
-    # Start the dummy HTTP server in a background thread for Render
-    server_thread = threading.Thread(target=run_dummy_server, daemon=True)
-    server_thread.start()
+    port = int(os.environ.get("PORT", 10000))
 
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -219,9 +199,15 @@ def main():
     app.add_handler(CallbackQueryHandler(admin_approve, pattern="^approve_"))
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.ALL, receive_receipt))
 
-    print("Mesola Technology Bot is running...")
+    print("Starting Webhook server for Render...")
 
-    app.run_polling()
+    # Run using Webhook so Render stays active and responds instantly
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        url_path=BOT_TOKEN,
+        webhook_url=f"{RENDER_URL}/{BOT_TOKEN}"
+    )
 
 
 if __name__ == "__main__":
