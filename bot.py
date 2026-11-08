@@ -22,12 +22,12 @@ CBE_NAME = "Mesfin"
 TELEBIRR_NUMBER = "0931335199"
 TELEBIRR_NAME = "Mesfin"
 
-# Courses and their corresponding PDF filenames
+# Courses and their corresponding GitHub PDF filenames
 COURSES = {
-    "basic": ("Basic Computer Skills Full Course", 350, "basic.pdf"),
-    "video": ("Video Editing Full Course", 450, "video.pdf"),
-    "mobile": ("Mobile Software Full Course", 350, "mobile.pdf"),
-    "graphics": ("Graphics Design Full Course", 500, "graphics.pdf"),
+    "basic": ("Basic Computer Skills Full Course", 350, "BASIC COMPUTER SKIILLS FULL COURSE.pdf"),
+    "video": ("Video Editing Full Course", 450, "CAPCUT FULL COARSE.pdf"),
+    "mobile": ("Mobile Software Full Course", 350, "MOBILE SOFTWARE FULL COURSE.pdf"),
+    "graphics": ("Graphics Design Full Course", 500, "GRAPHICS DESIGN FULL COURSE.pdf"),
 }
 
 logging.basicConfig(level=logging.INFO)
