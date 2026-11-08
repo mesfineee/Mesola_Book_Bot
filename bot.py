@@ -1,4 +1,7 @@
+import os
 import logging
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -9,7 +12,7 @@ from telegram.ext import (
     filters
 )
 
-# SETTINGS
+# ==================== SETTINGS ====================
 BOT_TOKEN = "9076447381:AAFQjWAVfpcuno18AJF5jXwY2feGl99V8w0"
 ADMIN_ID = 8892893806
 
@@ -19,7 +22,7 @@ CBE_NAME = "Mesfin"
 TELEBIRR_NUMBER = "0931335199"
 TELEBIRR_NAME = "Mesfin"
 
-# መጽሐፎች እና የኮምፒውተርዎ ላይ ያሉ የፒዲኤፍ ፋይሎች ስም
+# Courses and their corresponding PDF filenames
 COURSES = {
     "basic": ("Basic Computer Skills Full Course", 350, "basic.pdf"),
     "video": ("Video Editing Full Course", 450, "video.pdf"),
@@ -30,7 +33,20 @@ COURSES = {
 logging.basicConfig(level=logging.INFO)
 
 
-# 1. START
+# ==================== DUMMY HTTP SERVER FOR RENDER ====================
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Mesola Technology Bot is alive and running!")
+
+def run_dummy_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), SimpleHandler)
+    server.serve_forever()
+
+
+# ==================== 1. START COMMAND ====================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("Basic Computer Skills - 350 Birr", callback_data="basic")],
@@ -46,7 +62,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# 2. COURSE SELECTION
+# ==================== 2. COURSE SELECTION ====================
 async def select_course(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -69,7 +85,7 @@ async def select_course(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# 3. PAYMENT INFORMATION
+# ==================== 3. PAYMENT INFORMATION ====================
 async def payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -97,7 +113,7 @@ async def payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# 4. RECEIVE PAYMENT SCREENSHOT & NOTIFY ADMIN
+# ==================== 4. RECEIVE RECEIPT & NOTIFY ADMIN ====================
 async def receive_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     course = context.user_data.get("course")
 
@@ -139,7 +155,7 @@ async def receive_receipt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-# 5. ADMIN APPROVAL & SENDING BOOK
+# ==================== 5. ADMIN APPROVAL & SENDING BOOK ====================
 async def admin_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -152,15 +168,16 @@ async def admin_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
     customer_id = int(data_parts[1])
     course_key = data_parts[2]
 
-    name, price, book_filename = COURSES[course_key]
+    name, _, book_filename = COURSES[course_key]
 
     try:
-        # መጽሐፉን ከኮምፒውተርዎ / ከሰርቨሩ በቀጥታ ለተጠቃሚው መላክ
+        # Send confirmation message
         await context.bot.send_message(
             chat_id=customer_id,
             text=f"🎉 Your payment has been verified by Admin!\n\nHere is your book: {name}"
         )
 
+        # Send the actual PDF document from the server files
         with open(book_filename, 'rb') as book_file:
             await context.bot.send_document(
                 chat_id=customer_id,
@@ -168,7 +185,7 @@ async def admin_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 caption=f"📖 {name} - Enjoy reading!"
             )
         
-        # NoneType ስህተት እንዳይፈጠር (or "") ተጨምሯል
+        # Safely update admin message to prevent NoneType errors
         old_caption = query.message.caption or ""
         old_text = query.message.text or ""
         
@@ -185,10 +202,14 @@ async def admin_approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(f"Failed to send book to user: {e}")
 
 
-# MAIN
+# ==================== MAIN FUNCTION ====================
 def main():
     if BOT_TOKEN == "PASTE_YOUR_NEW_TOKEN_HERE":
         raise ValueError("Please add your new BotFather token first.")
+
+    # Start the dummy HTTP server in a background thread for Render
+    server_thread = threading.Thread(target=run_dummy_server, daemon=True)
+    server_thread.start()
 
     app = Application.builder().token(BOT_TOKEN).build()
 
